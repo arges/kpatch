@@ -24,6 +24,8 @@
 #include <linux/module.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include <linux/kallsyms.h>
+#include <linux/version.h>
 
 #include <linux/livepatch.h>
 
@@ -176,6 +178,54 @@ static void patch_free_livepatch(struct klp_patch *patch)
 	}
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,3,0)
+struct patch_find_arg {
+	const char *objname;
+	const char *name;
+	unsigned long addr;
+	unsigned long sympos;
+};
+
+static int patch_find_callback(void *data, const char *name,
+			       struct module *mod, unsigned long addr)
+{
+        struct patch_find_arg *args = data;
+
+	if ((mod && !args->objname) || (!mod && args->objname))
+                return 0;
+
+	if (strcmp(args->name, name))
+		return 0;
+
+	if (args->objname && strcmp(args->objname, mod->name))
+		return 0;
+
+        args->sympos++;
+
+	/* if address matches return */
+        if (args->addr == addr)
+		return 1;
+
+	return 0;
+}
+static int patch_find_object_symbol(const char *objname, const char *name,
+				    unsigned long addr)
+{
+	struct patch_find_arg args = {
+		.objname = objname,
+		.name = name,
+		.addr = addr,
+		.sympos = 0,
+	};
+
+	mutex_lock(&module_mutex);
+	kallsyms_on_each_symbol(patch_find_callback, &args);
+	mutex_unlock(&module_mutex);
+
+	return args.sympos;
+}
+#endif
+
 extern struct kpatch_patch_func __kpatch_funcs[], __kpatch_funcs_end[];
 extern struct kpatch_patch_dynrela __kpatch_dynrelas[], __kpatch_dynrelas_end[];
 
@@ -237,7 +287,14 @@ static int __init patch_init(void)
 			lfunc = &lfuncs[j];
 			lfunc->old_name = func->kfunc->name;
 			lfunc->new_func = (void *)func->kfunc->new_addr;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,3,0)
+			lfunc->old_sympos =
+				patch_find_object_symbol(object->name,
+							 func->kfunc->name,
+							 func->kfunc->old_addr);
+#else
 			lfunc->old_addr = func->kfunc->old_addr;
+#endif
 			j++;
 		}
 
@@ -250,7 +307,14 @@ static int __init patch_init(void)
 		list_for_each_entry(reloc, &object->relocs, list) {
 			lreloc = &lrelocs[j];
 			lreloc->loc = reloc->kdynrela->dest;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,3,0)
+			lreloc->sympos =
+				patch_find_object_symbol(object->name,
+							 reloc->kdynrela->name,
+							 reloc->kdynrela->src);
+#else
 			lreloc->val = reloc->kdynrela->src;
+#endif
 			lreloc->type = reloc->kdynrela->type;
 			lreloc->name = reloc->kdynrela->name;
 			lreloc->addend = reloc->kdynrela->addend;
