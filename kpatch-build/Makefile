@@ -3,9 +3,9 @@ include ../Makefile.inc
 CFLAGS  += -I../kmod/patch -Iinsn -Wall -g -Werror
 LDFLAGS = -lelf
 
-TARGETS = create-diff-object
-OBJS = create-diff-object.o kpatch-elf.o lookup.o insn/insn.o insn/inat.o
-SOURCES = create-diff-object.c kpatch-elf.c lookup.c insn/insn.c insn/inat.c
+TARGETS = create-diff-object create-livepatch-object
+OBJS = kpatch-elf.o lookup.o insn/insn.o insn/inat.o
+SOURCES = create-diff-object.c create-livepatch-object.c kpatch-elf.c lookup.c insn/insn.c insn/inat.c
 
 all: $(TARGETS)
 
@@ -14,7 +14,10 @@ all: $(TARGETS)
 %.o : %.c
 	$(CC) -MMD -MP $(CFLAGS) -c -o $@ $<
 
-create-diff-object: $(OBJS)
+create-diff-object: create-diff-object.o $(OBJS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+create-livepatch-object: create-livepatch-object.o $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 install: all
