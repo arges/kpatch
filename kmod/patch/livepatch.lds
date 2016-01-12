@@ -1,4 +1,6 @@
-__kpatch_funcs = ADDR(.kpatch.funcs);
-__kpatch_funcs_end = ADDR(.kpatch.funcs) + SIZEOF(.kpatch.funcs);
-__kpatch_dynrelas = ADDR(.kpatch.dynrelas);
-__kpatch_dynrelas_end = ADDR(.kpatch.dynrelas) + SIZEOF(.kpatch.dynrelas);
+__livepatch_objects = ADDR(.livepatch.objects);
+__livepatch_objects_end = ADDR(.livepatch.objects) + SIZEOF(.livepatch.objects);
+__livepatch_funcs = ADDR(.livepatch.funcs);
+__livepatch_funcs_end = ADDR(.livepatch.funcs) + SIZEOF(.livepatch.funcs);
+__livepatch_relocs = ADDR(.livepatch.relocs);
+__livepatch_relocs_end = ADDR(.livepatch.relocs) + SIZEOF(.livepatch.relocs);

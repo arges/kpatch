@@ -580,8 +580,13 @@ make prepare >> "$LOGFILE" 2>&1 || die
 cd "$TEMPDIR/output"
 ld -r -o ../patch/output.o $(find . -name "*.o") >> "$LOGFILE" 2>&1 || die
 
+# Generate livepatch format object
+if [[ $PATCHTYPE == "livepatch" ]]; then
+  mv ../patch/output.o ../patch/input.o
+  "$TOOLSDIR"/create-livepatch-object ../patch/input.o ../patch/output.o 2>&1 |tee -a "$LOGFILE"
+
 # Create checksum if using kpatch patching.
-if [[ $PATCHTYPE == "kpatch" ]]; then
+elif [[ $PATCHTYPE == "kpatch" ]]; then
 	md5sum ../patch/output.o | awk '{printf "%s\0", $1}' > checksum.tmp || die
 	objcopy --add-section .kpatch.checksum=checksum.tmp --set-section-flags .kpatch.checksum=alloc,load,contents,readonly  ../patch/output.o || die
 	rm -f checksum.tmp
